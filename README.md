@@ -90,7 +90,7 @@ keycloak:
 
 ## Installation
 Just add it as maven dependency:
-```
+```xml
 <dependency>
   <groupId>it.maconsultingitalia.keycloak</groupId>
   <artifactId>spring-boot-keycloak-policy-enforcer</artifactId>
@@ -112,20 +112,20 @@ annotated method. This means that if the rest controllers are correctly annotate
 1. Add the `@EnableKeycloakResourcesAutoconfig` to your Spring Boot application or to a specific configuration class.
 2. Add a keycloak configuration class with a `FilterRegistrationBean`
 ```java
-    @Bean
-    public FilterRegistrationBean<ServletPolicyEnforcerFilter> keycloakPolicyEnforcerFilter(PolicyEnforcerConfig policyEnforcerConfig) {
-        FilterRegistrationBean<ServletPolicyEnforcerFilter> registrationBean = new FilterRegistrationBean<>();
-        registrationBean.setFilter(new ServletPolicyEnforcerFilter(httpRequest -> policyEnforcerConfig));
-        registrationBean.addUrlPatterns("/*"); 
-        registrationBean.setOrder(1); 
-        return registrationBean;
-    }
+@Bean
+public FilterRegistrationBean<ServletPolicyEnforcerFilter> keycloakPolicyEnforcerFilter(PolicyEnforcerConfig policyEnforcerConfig) {
+    FilterRegistrationBean<ServletPolicyEnforcerFilter> registrationBean = new FilterRegistrationBean<>();
+    registrationBean.setFilter(new ServletPolicyEnforcerFilter(httpRequest -> policyEnforcerConfig));
+    registrationBean.addUrlPatterns("/*"); 
+    registrationBean.setOrder(1); 
+    return registrationBean;
+}
 ```
 _please note that the policyEnforcerConfig is declared in this library, so it's not necessary to add it manually_
 
 ## Examples
 ##### SimplestRestController
-```
+```java
 @RestController
 public Class SimplestController {
 
@@ -137,7 +137,7 @@ public Class SimplestController {
 In the simplest case the autoconfigurer will create the single endpoint `/` with no extra information.
 
 ##### Multiple Mappings Controller
-```
+```java
 @RestController
 @RequestMapping("/foo", "bar")
 public Class MultipleMappingController {
@@ -152,7 +152,7 @@ Regardless of the trailing slash in the `@RequestMapping`, the configurator will
 The same happens if the method mapping has more than one path.
 
 ##### Auth Scope Based Controller (Swagger v3 / Annotations v2)
-```
+```java
 @RestController
 public Class AuthzController {
 
@@ -170,7 +170,7 @@ public Class AuthzController {
 }
 ```
 This example will produce the equivalent of the yaml
-```
+```yaml
 keycloak:
   ...
   policy-enforcer-config:
@@ -184,7 +184,7 @@ keycloak:
 ```
 
 ##### Auth Scope Based Controller (Swagger v2 / Annotations v1.5)
-```
+```java
 @RestController
 public Class AuthzController {
 
@@ -202,7 +202,7 @@ public Class AuthzController {
 }
 ```
 This example will produce the equivalent of the yaml
-```
+```yaml
 keycloak:
   ...
   policy-enforcer-config:
@@ -226,7 +226,7 @@ The `@EnableKeycloakConfigurationExportController` annotation enables an endpoin
 that prints on screen the Json Settings.
 The service behind this controller uses the keycloak configuration to generate the script that can be imported in 
 Keycloak, whose structure is the following:
-```
+```json
 {
   "allowRemoteResourceManagement": false,
   "policyEnforcementMode": "ENFORCING",
@@ -289,4 +289,3 @@ the Json Configuration export in production.
 ## Known limitations
 At the moment, the endpoints are added only if the methods are mapped with `@GetMapping`, `@PostMapping`, `@PutMapping` etc.
 If the method is annotated via `@RequestMapping`, then the http verb is not inferred thus the endpoint is not added. 
-   
