@@ -16,14 +16,13 @@
 package it.maconsulting.kcautoconf;
 
 import it.maconsulting.kcautoconf.services.AutoconfigurationService;
-import org.keycloak.adapters.springboot.KeycloakSpringBootProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * This is the implementation of the autoconfig annotation.
- * It integrates the {@link org.keycloak.adapters.springboot.KeycloakSpringBootProperties} and performs the automatic
+ * It integrates the  and performs the automatic
  * resources and scopes configuration.<br>
  * The process is additive and not destructive. It means that if a policy-enforcement configuration section is present
  * in the application.properties or application.yaml file, it is kept.
@@ -34,16 +33,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ComponentScan(basePackages = {"it.maconsulting.kcautoconf.*"})
 public class KeycloakResourceAutoConfiguration {
-    private final AutoconfigurationService autoconfigurationService;
 
     @Autowired
     public KeycloakResourceAutoConfiguration(AutoconfigurationService autoconfigurationService) {
-        this.autoconfigurationService = autoconfigurationService;
         autoconfigurationService.updateKeycloakConfiguration();
-    }
-
-    public KeycloakSpringBootProperties kcProperties() {
-        return autoconfigurationService.getKeycloakSpringBootProperties();
     }
 
 }

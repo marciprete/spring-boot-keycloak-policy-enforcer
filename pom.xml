@@ -4,12 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>it.maconsultingitalia.keycloak</groupId>
-    <artifactId>keycloak-resource-autoconf</artifactId>
-    <version>0.4.0</version>
+    <artifactId>spring-boot-keycloak-policy-enforcer</artifactId>
+    <version>1.0.0</version>
 
     <name>Keycloak Resource Autoconfigurator</name>
     <description>Automatic configuration annotation to enable autodiscovery of Keycloak policy enforcement
-        endpoints for spring-boot based resource servers
+        endpoints for spring-boot 3 based resource servers
     </description>
 
     <url>https://www.maconsultingitalia.it</url>
@@ -31,37 +31,36 @@
     </developers>
 
     <scm>
-        <url>https://github.com/marciprete/keycloak-resource-autoconf</url>
-        <developerConnection>scm:git:ssh://github.com/marciprete/keycloak-resource-autoconf.git</developerConnection>
+        <url>https://github.com/marciprete/spring-boot-keycloak-policy-enforcer</url>
+        <developerConnection>scm:git:ssh://github.com/marciprete/spring-boot-keycloak-policy-enforcer.git</developerConnection>
     </scm>
 
     <properties>
-        <maven.compiler.target>11</maven.compiler.target>
-        <maven.compiler.source>11</maven.compiler.source>
-        <keycloak.version>19.0.3</keycloak.version>
-        <spring.version>5.3.30</spring.version>
-        <slf4j.version>1.7.36</slf4j.version>
-        <logback.version>1.2.12</logback.version>
-        <swagger-annotations.version>1.6.12</swagger-annotations.version>
-        <swagger3-annotations.version>2.2.18</swagger3-annotations.version>
-        <junit.version>5.8.2</junit.version>
-        <spring-test.version>2.6.15</spring-test.version>
-        <spring-boot.version>2.6.15</spring-boot.version>
-        <thymeleaf.version>3.1.2.RELEASE</thymeleaf.version>
-        <gson.version>2.10.1</gson.version>
-        <lombok.version>1.18.26</lombok.version>
-        <jackson-databind.version>2.14.2</jackson-databind.version>
-        <bcprov-jdk15on.version>1.76</bcprov-jdk15on.version>
-        <mockito.version>4.2.0</mockito.version>
-        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-        <maven-gpg-plugin.version>3.1.0</maven-gpg-plugin.version>
-        <maven-surefire-plugin.version>3.0.0</maven-surefire-plugin.version>
-        <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <keycloak.version>25.0.1</keycloak.version>
+        <spring.version>6.2.7</spring.version>
+        <slf4j.version>2.0.17</slf4j.version>
+        <logback.version>1.5.18</logback.version>
+        <swagger-annotations.version>1.6.14</swagger-annotations.version>
+        <swagger3-annotations.version>2.2.25</swagger3-annotations.version>
+        <junit.version>5.11.4</junit.version>
+        <spring-test.version>3.4.5</spring-test.version>
+        <spring-boot.version>3.4.5</spring-boot.version>
+        <lombok.version>1.18.36</lombok.version>
+        <jackson-databind.version>2.18.3</jackson-databind.version>
+        <bcprov-jdk15on.version>1.78.1</bcprov-jdk15on.version>
+        <mockito.version>5.14.2</mockito.version>
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-gpg-plugin.version>3.2.6</maven-gpg-plugin.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-        <maven-release-plugin.version>3.0.0-M7</maven-release-plugin.version>
-        <maven-deploy-plugin.version>3.1.0</maven-deploy-plugin.version>
-        <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
-        <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
+        <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
+        <maven-deploy-plugin.version>3.1.4</maven-deploy-plugin.version>
+        <maven-javadoc-plugin.version>3.10.1</maven-javadoc-plugin.version>
+        <nexus-staging-maven-plugin.version>1.7.0</nexus-staging-maven-plugin.version>
+        <maven-scm-provider-gitexe.version>2.1.0</maven-scm-provider-gitexe.version>
     </properties>
 
     <dependencies>
@@ -93,25 +92,12 @@
             <version>${bcprov-jdk15on.version}</version>
         </dependency>
 
-
         <dependency>
             <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-spring-boot-adapter-core</artifactId>
+            <artifactId>keycloak-policy-enforcer</artifactId>
             <version>${keycloak.version}</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.bouncycastle</groupId>
-                    <artifactId>bcprov-jdk15on</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>${gson.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework</groupId>
@@ -146,18 +132,6 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.thymeleaf</groupId>
-            <artifactId>thymeleaf</artifactId>
-            <version>${thymeleaf.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.thymeleaf</groupId>
-            <artifactId>thymeleaf-spring5</artifactId>
-            <version>${thymeleaf.version}</version>
         </dependency>
 
         <dependency>
@@ -212,8 +186,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>11</source>
-                    <target>11</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
 
@@ -291,7 +265,7 @@
                     <dependency>
                         <groupId>org.apache.maven.scm</groupId>
                         <artifactId>maven-scm-provider-gitexe</artifactId>
-                        <version>1.12.0</version>
+                        <version>${maven-scm-provider-gitexe.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>

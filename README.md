@@ -1,59 +1,105 @@
-![workflow](https://github.com/marciprete/keycloak-resource-autoconf/actions/workflows/maven.yml/badge.svg)
+![workflow](https://github.com/marciprete/spring-boot-keycloak-policy-enforcer/actions/workflows/maven.yml/badge.svg)
 
 
-# Keycloak Resource Autoconfigurator for Spring Boot 2 
+# Spring Boot - Keycloak policy enforcer configurator 
 
-[Keycloak](https://www.keycloak.org) is an Open Source Identity and Access Management solution for modern Applications and Services.
+## Overview
 
+A Spring Boot 3 library that automates the configuration of Keycloak policy enforcement in your applications. 
+This library simplifies the integration between Spring Boot applications and Keycloak's authorization services by automatically
+generating policy enforcement configurations based on your application's endpoints and Swagger/OpenAPI annotations.
+
+## Why Use This Library?
+
+Traditional Keycloak policy enforcement configuration requires manual definition of paths and scopes in configuration files, which can lead to:
+- Lengthy and complex configurations
+- Potential duplication of information
+- Increased chance of configuration errors
+- Maintenance overhead
+
+This library solves these problems by:
+- Automatically generating policy enforcement configurations
+- Using existing Swagger/OpenAPI annotations and Spring Web annotations
+- Providing a single point of configuration
+- Reducing manual configuration errors
+
+## Key Features
+
+### 1. Runtime Configuration
+- Automatic scanning of @RestController annotated classes
+- Parsing of @RequestMapping and related annotations
+- Integration with Swagger/OpenAPI security annotations
+- Support for multiple HTTP methods and paths
+
+### 2. Keycloak Settings Generator
+- Provides a built-in endpoint for generating Keycloak configuration
+- Generates JSON settings compatible with Keycloak import
+- Customizable export path
+- Security features for protecting the export endpoint
+
+
+## Motivation
 When it's used as an **authorization server**, it can be necessary to configure the **policy enforcement** in a configuration file, like this:
-```
-keycloak.policy-enforcer-config.enforcement-mode=PERMISSIVE
-keycloak.policy-enforcer-config.paths[0].name=Car Resource
-keycloak.policy-enforcer-config.paths[0].path=/cars/create
-keycloak.policy-enforcer-config.paths[0].scopes[0]=car:create
 
-keycloak.policy-enforcer-config.paths[1].path=/cars/{id}
-keycloak.policy-enforcer-config.paths[1].methods[0].method=GET
-keycloak.policy-enforcer-config.paths[1].methods[0].scopes[0]=car:view-detail
-keycloak.policy-enforcer-config.paths[1].methods[1].method=DELETE
-keycloak.policy-enforcer-config.paths[1].methods[1].scopes[0]=car:delete
+```yaml
+keycloak:
+  enabled: true
+  auth-server-url: http://keycloak-host:8080/
+  realm: my-realm
+  resource: my-client
+  credentials:
+    secret: my-secret
+  lazy-load-paths: true
+  enforcement-mode: ENFORCING
+  paths:
+    - path: /cars/{id}
+      methods:
+        - method: GET
+          scopes:
+            - "car:view-detail"
+    - path: /car
+      methods:
+        - method: POST
+          scopes:
+            - "car:create"
 ```
 
 Anyway, this approach can lead to a lot of configuration, possible duplications (especially when using api-documentation annotations)
 and possibly errors.
   
 The aim of this project is to provide an automatic configuration process, based on the Swagger api annotations and on the 
- Spring web annotations, to have one single configuration point.
-
+ Spring web annotations, to have one single configuration point. The only **required** configuration is 
+```yaml
+keycloak:
+  enabled: true
+  auth-server-url: http://keycloak-host:8080/
+  realm: my-realm
+  resource: my-client
+  credentials:
+    secret: my-secret
+  lazy-load-paths: true
+  enforcement-mode: ENFORCING
+```
 
 ## Requirements
-To take advantage of the autoconfiguration process, the resource server application must be a based on SpringBoot 2, 
-and make use of the following:
-  * Swagger annotations (v1.5 or v2)
-  * RestController annotations
-  * Keycloak spring-boot adapter
+* Java 17 or higher
+* Spring Boot 3
+* Keycloak 25.0.1 or higher
+* Swagger annotations (v1.5 or v2)
+  
 
 ## Installation
 Just add it as maven dependency:
 ```
 <dependency>
   <groupId>it.maconsultingitalia.keycloak</groupId>
-  <artifactId>keycloak-resource-autoconf</artifactId>
-  <version>0.4.0</version>
+  <artifactId>spring-boot-keycloak-policy-enforcer</artifactId>
+  <version>1.0.0</version>
 </dependency>
 ```
+No other dependencies are required.
 
-## Features
-| Library Version | Keycloak version  |
-|-----------------|:-----------------:|
-| 0.3.0           |     <=16.0.0      |
-| 0.4.0           |     <=19.0.3      |
-
-
-From Version 0.3.0 this library adds 2 different features:
-
-  * Runtime Configuration
-  * Keycloak Settings Generator
+## Usage
 
 ### Automatic Configuration
 Any controller annotated with `@RestController` is scanned from the autoconfigurator, then all its methods are parsed too,
@@ -62,6 +108,20 @@ The found endpoints are added to the `KeycloakSpringBootProperties`, in the poli
 Since the bean is lazy loaded, the configurations in the application.properties or application.yml files are kept.
 The authorization scopes defined within the `@ApiOperation` or `@Operation` annotations are added too, according to the http verb of the 
 annotated method. This means that if the rest controllers are correctly annotated with swagger, no extra configuration is required.
+
+1. Add the `@EnableKeycloakResourcesAutoconfig` to your Spring Boot application or to a specific configuration class.
+2. Add a keycloak configuration class with a `FilterRegistrationBean`
+```java
+    @Bean
+    public FilterRegistrationBean<ServletPolicyEnforcerFilter> keycloakPolicyEnforcerFilter(PolicyEnforcerConfig policyEnforcerConfig) {
+        FilterRegistrationBean<ServletPolicyEnforcerFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new ServletPolicyEnforcerFilter(httpRequest -> policyEnforcerConfig));
+        registrationBean.addUrlPatterns("/*"); 
+        registrationBean.setOrder(1); 
+        return registrationBean;
+    }
+```
+_please note that the policyEnforcerConfig is declared in this library, so it's not necessary to add it manually_
 
 ## Examples
 ##### SimplestRestController
@@ -157,6 +217,8 @@ keycloak:
 > [!WARNING]<br>
 > **If you are using nickname**: Be very careful, because keycloak adapter will **only** search for resources 
 > with this value as resource name, and it will **skip the search by path**!
+> Therefore, if the resource name is not defined in Keycloak, or it is not the same, the permission id will always be null
+> and the policy enforcement will DENY the access.
 
 ## Keycloak Settings Generator
 
@@ -197,28 +259,31 @@ At the moment, the export functions creates a file where the global decision str
 
 All the resources and the Authorization Scopes can be imported from the Keycloak's console.
 
-  * _ResourceName_ and _DisplayName_ are the same, as defined in the Api (#ApiOperation.nickname or #Operation.operationId).
+  * _ResourceName_ is set as defined in the Api (#ApiOperation.nickname or #Operation.operationId).
+  * _DisplayName_ is set as defined in the Api (#ApiOperation.value or #Operation.description).
   If the field is not present, the method name will be used in place.
   * OwnerManagedAccess is false by default.
 
 **NOTE**: Existing resources are not added to the export file. That is, if a resource uri is present in the keycloak client, 
 it will be skipped
 
-### Configuration export controller 
-By default, the controller is available under `/mac/configuration/export` but it can be changed via `application.properties`:
+## Configuration 
+
+The library can be configured via `application.yml` or `application.properties`.
+Here's the list of the available properties:
+```yaml
+kcautoconf:
+    export-path: /config
+    protect-export-path: false
+    map-name: true
+    export-path-access-scope: configuration:export
 ```
-kcautoconf.export-path=/my/custom/export/path
-```
 
-This endpoint will be available to all the authenticated user. For security reasons, it's strongly recommended to disable
-the Json Configuration export in production. 
-
-From version 0.4.0 on, 2 new configuration parameters have been added:
-
-* kcautoconf.protect-export-path (`boolean`, default to `false`)
-* kcautoconf.export-path-access-scope (`String`, default to `configuration:expport`, only meaningful when `protect-export-path` is ste to `true`)
-
-By setting these values, the autoconfigurator assigns the `export-path-access-scope` to the configuration endpoint, and enables the policy enforcement.
+* `export-path`: the path where the Json Configuration is exported. Default to  `/mac/configuration/export` 
+[!Warning] This endpoint will be available to all the authenticated user. For security reasons, it's strongly recommended to disable
+the Json Configuration export in production.
+* `protect-export-path`: whether to apply policy enforcement. (`boolean`, default to `false`)
+* `export-path-access-scope`: the authorization scope to be assigned to this resource.  (`String`, default to `configuration:export`, only meaningful when `protect-export-path` is set to `true`)
 
 
 ## Known limitations

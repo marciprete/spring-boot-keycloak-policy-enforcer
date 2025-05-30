@@ -12,8 +12,10 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * @author Michele Arciprete
+ */
 @Service
 @Conditional(SwaggerV2Condition.class)
 public class SwaggerV2OperationService implements SwaggerOperationService {
@@ -21,8 +23,8 @@ public class SwaggerV2OperationService implements SwaggerOperationService {
     public List<String> getScopes(Method method) {
         final ApiOperation apiOperationAnnotation = AnnotationUtils.getAnnotation(method, ApiOperation.class);
         if (apiOperationAnnotation != null) {
-            List<AuthorizationScope[]> scopes = Arrays.stream(apiOperationAnnotation.authorizations()).map(Authorization::scopes).collect(Collectors.toList());
-            return scopes.stream().flatMap(inner -> Arrays.stream(inner).map(AuthorizationScope::scope)).collect(Collectors.toList());
+            List<AuthorizationScope[]> scopes = Arrays.stream(apiOperationAnnotation.authorizations()).map(Authorization::scopes).toList();
+            return scopes.stream().flatMap(inner -> Arrays.stream(inner).map(AuthorizationScope::scope)).toList();
         } else {
             return Collections.emptyList();
         }
@@ -36,6 +38,18 @@ public class SwaggerV2OperationService implements SwaggerOperationService {
                 apiOperationAnnotation.nickname() != null &&
                 !apiOperationAnnotation.nickname().isEmpty()) {
             name = apiOperationAnnotation.nickname();
+        }
+        return name;
+    }
+
+    @Override
+    public String getDisplayName(Method method) {
+        final ApiOperation apiOperationAnnotation = AnnotationUtils.getAnnotation(method, ApiOperation.class);
+        String name = method.getName();
+        if (apiOperationAnnotation != null &&
+                apiOperationAnnotation.value() != null &&
+                !apiOperationAnnotation.value().isEmpty()) {
+            name = apiOperationAnnotation.value();
         }
         return name;
     }

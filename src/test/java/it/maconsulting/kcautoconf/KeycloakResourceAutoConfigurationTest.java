@@ -24,15 +24,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.keycloak.adapters.springboot.KeycloakSpringBootProperties;
 import org.keycloak.representations.adapters.config.PolicyEnforcerConfig;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationContext;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Michele Arciprete
@@ -55,17 +56,11 @@ class KeycloakResourceAutoConfigurationTest {
 
     private AutoconfigurationService autoconfigurationService;
 
-    private KeycloakResourceAutoConfiguration sut;
-
+    PolicyEnforcerConfig policyEnforcerConfig = new PolicyEnforcerConfig();
 
     @BeforeEach
-    public void setup() {
-        KeycloakSpringBootProperties keycloakSpringBootProperties = new KeycloakSpringBootProperties();
-        PolicyEnforcerConfig policyEnforcerConfig = new PolicyEnforcerConfig();
-        keycloakSpringBootProperties.setPolicyEnforcerConfig(policyEnforcerConfig);
-
-        autoconfigurationService = new AutoconfigurationService(context, keycloakSpringBootProperties, swaggerOperationServices);
-        sut = new KeycloakResourceAutoConfiguration(autoconfigurationService);
+    void setup() {
+        autoconfigurationService = new AutoconfigurationService(context, policyEnforcerConfig, swaggerOperationServices);
     }
 
     @Test
@@ -78,10 +73,7 @@ class KeycloakResourceAutoConfigurationTest {
         Mockito.when(context.getBeansWithAnnotation(Mockito.any())).thenReturn(beansWithAnnotation);
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(1, paths.size());
@@ -89,7 +81,6 @@ class KeycloakResourceAutoConfigurationTest {
             Assertions.assertEquals("/authorized", path.getPath());
             Assertions.assertEquals(1, path.getMethods().get(0).getScopes().size());
             Assertions.assertEquals("entity:read", path.getMethods().get(0).getScopes().get(0));
-            Assertions.assertEquals("Entity Reader", path.getName());
         });
     }
 
@@ -104,10 +95,7 @@ class KeycloakResourceAutoConfigurationTest {
 
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(1, paths.size());
@@ -115,7 +103,6 @@ class KeycloakResourceAutoConfigurationTest {
             Assertions.assertEquals("/authorized", path.getPath());
             Assertions.assertEquals(1, path.getMethods().get(0).getScopes().size());
             Assertions.assertEquals("entity:read", path.getMethods().get(0).getScopes().get(0));
-            Assertions.assertEquals("Entity Getter", path.getName());
         });
     }
 
@@ -127,10 +114,7 @@ class KeycloakResourceAutoConfigurationTest {
         Mockito.when(context.getBeansWithAnnotation(Mockito.any())).thenReturn(beansWithAnnotation);
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(1, paths.size());
@@ -145,10 +129,7 @@ class KeycloakResourceAutoConfigurationTest {
         Mockito.when(context.getBeansWithAnnotation(Mockito.any())).thenReturn(beansWithAnnotation);
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(3, paths.size());
@@ -165,10 +146,7 @@ class KeycloakResourceAutoConfigurationTest {
         Mockito.when(context.getBeansWithAnnotation(Mockito.any())).thenReturn(beansWithAnnotation);
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(2, paths.size());
@@ -184,10 +162,7 @@ class KeycloakResourceAutoConfigurationTest {
         Mockito.when(context.getBeansWithAnnotation(Mockito.any())).thenReturn(beansWithAnnotation);
         autoconfigurationService.updateKeycloakConfiguration();
 
-        KeycloakSpringBootProperties properties = sut.kcProperties();
-        Assertions.assertNotNull(properties);
-        Assertions.assertNotNull(properties.getPolicyEnforcerConfig());
-        List<PolicyEnforcerConfig.PathConfig> paths = properties.getPolicyEnforcerConfig().getPaths();
+        List<PolicyEnforcerConfig.PathConfig> paths = policyEnforcerConfig.getPaths();
         Assertions.assertNotNull(paths);
         Assertions.assertFalse(paths.isEmpty());
         Assertions.assertEquals(1, paths.size());

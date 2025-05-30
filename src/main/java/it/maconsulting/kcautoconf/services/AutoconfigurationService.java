@@ -1,11 +1,13 @@
 package it.maconsulting.kcautoconf.services;
 
+import it.maconsulting.kcautoconf.model.MethodConfiguration;
+import it.maconsulting.kcautoconf.model.PathConfiguration;
+import it.maconsulting.kcautoconf.model.PathConfigurationMapper;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.adapters.springboot.KeycloakSpringBootProperties;
 import org.keycloak.representations.adapters.config.PolicyEnforcerConfig;
 import org.springframework.aop.support.AopUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotatedElementUtils;
@@ -22,12 +24,16 @@ import java.util.function.Predicate;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AutoconfigurationService {
 
     @Getter
     private final ApplicationContext context;
-    @Getter
-    private final KeycloakSpringBootProperties keycloakSpringBootProperties;
+
+    private final PolicyEnforcerConfig policyEnforcerConfig;
+
+    private final PathConfigurationMapper pathConfigurationMapper = new PathConfigurationMapper();
+
     @Getter
     private final List<SwaggerOperationService> swaggerOperationServices;
 
@@ -37,72 +43,94 @@ public class AutoconfigurationService {
     @Value("${kcautoconf.protect-export-path:true}")
     private boolean protectExportPath;
 
+    @Value("${kcautoconf.map-names:false}")
+    private boolean mapNames;
+
     @Value("${kcautoconf.export-path-access-scope:configuration:export}")
     private String exportPathAccessScope;
 
-    @Autowired
-    public AutoconfigurationService(ApplicationContext context, KeycloakSpringBootProperties keycloakSpringBootProperties, List<SwaggerOperationService> swaggerOperationServices) {
-        this.context = context;
-        this.keycloakSpringBootProperties = keycloakSpringBootProperties;
-        this.swaggerOperationServices = swaggerOperationServices;
-    }
-
     public void updateKeycloakConfiguration() {
         log.info("Automatic resources and scopes configuration process started.");
-        keycloakSpringBootProperties.getPolicyEnforcerConfig().getPaths().addAll(getPathConfigurations());
+        List<PolicyEnforcerConfig.PathConfig> pathConfigurations = pathConfigurationMapper.toPathConfigs(getPathConfigurationsDom(), mapNames);
+        policyEnforcerConfig.getPaths().addAll(pathConfigurations);
     }
 
-    private List<PolicyEnforcerConfig.PathConfig> getPathConfigurations() {
+    public List<PathConfiguration> getPathConfigurationsDom() {
         log.info("Automatic resources and scopes configuration process started.");
-        Map<String, PolicyEnforcerConfig.PathConfig> pathConfigMap = new HashMap<>();
-        Map<String, Object> beansWithAnnotation = context.getBeansWithAnnotation(RestController.class);
+        Map<String, PathConfiguration> pathConfigMap = new HashMap<>();
 
-        beansWithAnnotation.forEach((name, bean) -> {
-            final Class<?> targetClass = AopUtils.getTargetClass(bean);
-            final RequestMapping requestMappingAnnotation = AnnotationUtils.getAnnotation(targetClass, RequestMapping.class);
-            List<String> paths = getClassLevelAnnotatedPaths(requestMappingAnnotation);
+        Map<String, Object> controllers = context.getBeansWithAnnotation(RestController.class);
+        for (Map.Entry<String, Object> entry : controllers.entrySet()) {
+            processController(entry.getKey(), entry.getValue(), pathConfigMap);
+        }
 
-            log.debug("Parsing controller {}", name);
-            Arrays.asList(targetClass.getDeclaredMethods()).forEach(method -> {
-                final RequestMapping requestMappingOnMethod = AnnotationUtils.getAnnotation(method, RequestMapping.class);
-                if (requestMappingOnMethod != null) {
-                    log.trace("Found method: {}", method);
-                    List<String> methodPaths = extractExtraPathsFromClassMethod(requestMappingOnMethod, method);
-                    List<RequestMethod> httpMethods = Arrays.asList(requestMappingOnMethod.method());
-
-                    paths.forEach(path -> httpMethods.forEach(verb -> methodPaths.forEach(methodPath -> {
-                        String policyEnforcementPath = buildHttpPath(path, methodPath);
-                        log.debug("Configuring {} request for path: {}", verb, policyEnforcementPath);
-
-                        PolicyEnforcerConfig.PathConfig pathConfig = new PolicyEnforcerConfig.PathConfig();
-                        pathConfig.setPath(policyEnforcementPath);
-                        PolicyEnforcerConfig.MethodConfig methodConfig = new PolicyEnforcerConfig.MethodConfig();
-                        methodConfig.setMethod(verb.name());
-                        Optional<SwaggerOperationService> operationServiceOption = swaggerOperationServices.stream().findFirst();
-                        if (operationServiceOption.isPresent()) {
-                            SwaggerOperationService swaggerOperationService = operationServiceOption.get();
-                            List<String> scopes = swaggerOperationService.getScopes(method);
-                            if (!scopes.isEmpty()) {
-                                scopes.stream().filter(Predicate.not(String::isBlank))
-                                        .forEach(scope -> log.debug("Found authorization scope: {}", scope));
-                                methodConfig.setScopes(scopes);
-                            }
-                            pathConfig.getMethods().add(methodConfig);
-                            pathConfig.setName(swaggerOperationService.getName(method));
-                        }
-
-                        PolicyEnforcerConfig.PathConfig existingPath = pathConfigMap.get(pathConfig.getPath());
-
-                        if (existingPath != null && !pathConfig.getMethods().isEmpty()) {
-                            existingPath.getMethods().add(pathConfig.getMethods().get(0));
-                        } else {
-                            pathConfigMap.put(pathConfig.getPath(), pathConfig);
-                        }
-                    })));
-                }
-            });
-        });
         return new ArrayList<>(pathConfigMap.values());
+    }
+
+    private void processController(String beanName, Object bean, Map<String, PathConfiguration> pathConfigMap) {
+        Class<?> targetClass = AopUtils.getTargetClass(bean);
+        RequestMapping classMapping = AnnotationUtils.getAnnotation(targetClass, RequestMapping.class);
+        List<String> classPaths = getClassLevelAnnotatedPaths(classMapping);
+
+        log.debug("Parsing controller {}", beanName);
+
+        for (Method method : targetClass.getDeclaredMethods()) {
+            RequestMapping methodMapping = AnnotationUtils.getAnnotation(method, RequestMapping.class);
+            if (methodMapping == null) continue;
+
+            processMethod(method, classPaths, methodMapping, pathConfigMap);
+        }
+    }
+
+    private void processMethod(Method method, List<String> classPaths, RequestMapping methodMapping, Map<String, PathConfiguration> pathConfigMap) {
+        log.trace("Found method: {}", method);
+
+        List<String> methodPaths = extractExtraPathsFromClassMethod(method);
+        RequestMethod[] httpMethods = methodMapping.method();
+
+        for (String basePath : classPaths) {
+            for (String methodPath : methodPaths) {
+                String fullPath = buildHttpPath(basePath, methodPath);
+                for (RequestMethod httpMethod : httpMethods) {
+                    log.debug("Configuring {} request for path: {}", httpMethod, fullPath);
+
+                    PathConfiguration pathConfig = pathConfigMap.computeIfAbsent(fullPath, k -> {
+                        PathConfiguration pc = new PathConfiguration();
+                        pc.setPath(fullPath);
+                        return pc;
+                    });
+
+                    MethodConfiguration methodConfig = buildMethodConfiguration(method, httpMethod);
+                    pathConfig.getMethods().add(methodConfig);
+
+                    populatePathMetadata(pathConfig, method);
+                }
+            }
+        }
+    }
+
+    private MethodConfiguration buildMethodConfiguration(Method method, RequestMethod httpMethod) {
+        MethodConfiguration methodConfig = new MethodConfiguration();
+        methodConfig.setMethod(httpMethod.name());
+
+        swaggerOperationServices.stream().findFirst().ifPresent(swagger -> {
+            List<String> scopes = swagger.getScopes(method).stream()
+                    .filter(Predicate.not(String::isBlank))
+                    .toList();
+
+            if (!scopes.isEmpty()) {
+                scopes.forEach(scope -> log.debug("Found authorization scope: {}", scope));
+                methodConfig.setScopes(scopes);
+            }
+        });
+        return methodConfig;
+    }
+
+    private void populatePathMetadata(PathConfiguration pathConfig, Method method) {
+        swaggerOperationServices.stream().findFirst().ifPresent(swagger -> {
+            pathConfig.setName(swagger.getName(method));
+            pathConfig.setDisplayName(swagger.getDisplayName(method));
+        });
     }
 
     private List<String> getClassLevelAnnotatedPaths(RequestMapping requestMappingAnnotation) {
@@ -126,7 +154,7 @@ public class AutoconfigurationService {
         return (path.length() > 1 && path.endsWith("/")) ? path.substring(0, path.lastIndexOf("/")) : path;
     }
 
-    private List<String> extractExtraPathsFromClassMethod(RequestMapping annotation, Method method) {
+    private List<String> extractExtraPathsFromClassMethod(Method method) {
         List<String> extraPaths = List.of("");
         RequestMapping merged = AnnotatedElementUtils.getMergedAnnotation(method, RequestMapping.class);
         if (merged != null && merged.path().length > 0) {
@@ -141,7 +169,7 @@ public class AutoconfigurationService {
 
     public void enableConfigurationPage() {
         PolicyEnforcerConfig.PathConfig configurationPath = new PolicyEnforcerConfig.PathConfig();
-        configurationPath.setPath(exportPath);
+        configurationPath.setPath(exportPath + "*");
         if (protectExportPath) {
             log.debug("ENFORCING protection over export path");
             configurationPath.setEnforcementMode(PolicyEnforcerConfig.EnforcementMode.ENFORCING);
@@ -149,7 +177,7 @@ public class AutoconfigurationService {
         } else {
             configurationPath.setEnforcementMode(PolicyEnforcerConfig.EnforcementMode.DISABLED);
         }
-        getKeycloakSpringBootProperties().getPolicyEnforcerConfig().getPaths().add(configurationPath);
+        policyEnforcerConfig.getPaths().add(configurationPath);
         log.info("Configuration page enabled and available @ {}", exportPath);
 
     }

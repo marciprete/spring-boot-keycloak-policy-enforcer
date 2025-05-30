@@ -12,6 +12,17 @@ public interface SwaggerOperationService {
      */
     List<String> getScopes(Method method);
 
+    /**
+     * Gets the name of the method
+     * @param method the method to get the name for
+     * @return the name of the method
+     */
     String getName(Method method);
 
+    /**
+     * Gets the display name of the method
+     * @param method the method to get the display name for
+     * @return the display name of the method
+     */
+    String getDisplayName(Method method);
 }

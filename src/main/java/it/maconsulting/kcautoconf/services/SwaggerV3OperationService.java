@@ -10,7 +10,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Conditional(SwaggerV3Condition.class)
@@ -19,7 +18,7 @@ public class SwaggerV3OperationService implements SwaggerOperationService {
     public List<String> getScopes(Method method) {
         final Operation apiOperationAnnotation = AnnotationUtils.getAnnotation(method, Operation.class);
         if (apiOperationAnnotation != null) {
-            return Arrays.stream(apiOperationAnnotation.security()).flatMap(scope -> Arrays.stream(scope.scopes())).collect(Collectors.toList());
+            return Arrays.stream(apiOperationAnnotation.security()).flatMap(scope -> Arrays.stream(scope.scopes())).toList();
         } else {
             return Collections.emptyList();
         }
@@ -33,6 +32,18 @@ public class SwaggerV3OperationService implements SwaggerOperationService {
                 apiOperationAnnotation.operationId() != null &&
                 !apiOperationAnnotation.operationId().isEmpty()) {
             name = apiOperationAnnotation.operationId();
+        }
+        return name;
+    }
+
+    @Override
+    public String getDisplayName(Method method) {
+        final Operation apiOperationAnnotation = AnnotationUtils.getAnnotation(method, Operation.class);
+        String name = method.getName();
+        if (apiOperationAnnotation != null &&
+                apiOperationAnnotation.description() != null &&
+                !apiOperationAnnotation.description().isEmpty()) {
+            name = apiOperationAnnotation.description();
         }
         return name;
     }
