@@ -280,8 +280,10 @@ kcautoconf:
 ```
 
 * `export-path`: the path where the Json Configuration is exported. Default to  `/mac/configuration/export` 
-[!Warning] This endpoint will be available to all the authenticated user. For security reasons, it's strongly recommended to disable
-the Json Configuration export in production.
+
+> [!Warning] This endpoint will be available to all the authenticated user. For security reasons, it's strongly recommended to disable
+> the Json Configuration export in production.
+
 * `protect-export-path`: whether to apply policy enforcement. (`boolean`, default to `false`)
 * `export-path-access-scope`: the authorization scope to be assigned to this resource.  (`String`, default to `configuration:export`, only meaningful when `protect-export-path` is set to `true`)
 
